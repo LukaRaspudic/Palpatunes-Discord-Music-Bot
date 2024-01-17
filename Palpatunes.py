@@ -3,10 +3,13 @@ from discord.ext import commands
 import youtube_dl
 from collections import deque
 
-token = MTE5NzA1MzE1MjEwNTYxMTI2NA.Gu4csU.khPM0TtYQbJjntMjSaqz8dtwcDr4YJvGic3IAI # Add your own discord bot token here instead
+intents = discord.Intents.default()
+intents.all()
+
+token = # Add your own discord bot token here instead
 prefix = '!'
 
-bot = commands.Bot(command_prefix=prefix)
+bot = commands.Bot(command_prefix=prefix, intents=intents)
 queues = {}
 
 @bot.event
