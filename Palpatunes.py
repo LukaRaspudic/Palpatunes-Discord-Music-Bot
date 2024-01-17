@@ -5,8 +5,9 @@ from collections import deque
 
 intents = discord.Intents.default()
 intents.all()
+intents.messages = True
 
-token = # Add your own discord bot token here instead
+token = 'Add your own bot token here'
 prefix = '!'
 
 bot = commands.Bot(command_prefix=prefix, intents=intents)
@@ -19,6 +20,7 @@ async def on_ready():
 @bot.command(name='play')
 async def play(ctx, url):
     channel = ctx.message.author.voice.channel
+    print(f'Attempting to join channel: {channel}')
     voice_channel = await channel.connect()
 
     if not queues.get(ctx.guild.id):
