@@ -1,13 +1,13 @@
 import discord
 from discord.ext import commands
-import youtube_dl
+import yt_dlp as youtube_dl
 from collections import deque
 
-intents = discord.Intents.default()
+intents = discord.Intents.all()
 intents.all()
 intents.messages = True
 
-token = 'Add your own bot token here'
+token = 'add your token here'
 prefix = '!'
 
 bot = commands.Bot(command_prefix=prefix, intents=intents)
@@ -62,13 +62,22 @@ async def play_next(guild_id, voice_channel):
                 'preferredcodec': 'mp3',
                 'preferredquality': '192',
             }],
+            'outtmpl': 'downloads/%(title)s.%(ext)s',
         }
 
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            url2 = info['formats'][0]['url']
-            voice_channel.play(discord.FFmpegPCMAudio(url2), after=lambda e: print('done', e))
-        await bot.get_channel(voice_channel.channel.id).send(f'Now playing: {info["title"]}')
+            audio_url = info['url'] if info.get('formats') else None
+
+            if audio_url:
+                voice_channel.play(discord.FFmpegPCMAudio(audio_url), after=lambda e: print('done', e))
+                await bot.get_channel(voice_channel.channel.id).send(f'Now playing: {info["title"]}')
+
+                # Check if there are more songs in the queue
+                if queues[guild_id]:
+                    await play_next(guild_id, voice_channel)
+            else:
+                await bot.get_channel(voice_channel.channel.id).send(f'Error: No audio stream found for {info["title"]}')
 
 @bot.event
 async def on_voice_state_update(member, before, after):
