@@ -1,13 +1,11 @@
 import discord
 from discord.ext import commands
-import yt_dlp as youtube_dl
+import yt_dlp
 from collections import deque
 
 intents = discord.Intents.all()
-intents.all()
-intents.messages = True
 
-token = 'add your token here'
+token = 'ADD YOUR TOKEN HERE'
 prefix = '!'
 
 bot = commands.Bot(command_prefix=prefix, intents=intents)
@@ -19,22 +17,40 @@ async def on_ready():
 
 @bot.command(name='play')
 async def play(ctx, url):
-    channel = ctx.message.author.voice.channel
-    print(f'Attempting to join channel: {channel}')
-    voice_channel = await channel.connect()
+    # Get the voice client associated with the guild
+    voice_client = ctx.voice_client
+
+    # Check if the bot is not already connected to a voice channel
+    if not voice_client:
+        # Bot is not in a voice channel, attempt to join the author's voice channel
+        channel = ctx.author.voice.channel
+        print(f'Attempting to join channel: {channel}')
+        voice_client = await channel.connect()
 
     if not queues.get(ctx.guild.id):
         queues[ctx.guild.id] = deque()
 
     queues[ctx.guild.id].append(url)
 
-    if not voice_channel.is_playing():
-        await play_next(ctx.guild.id, voice_channel)
+    # Check if the bot is not playing any song
+    if not voice_client.is_playing():
+        # If not, start playing the first song in the queue
+        await play_next(ctx.guild.id, voice_client)
 
 @bot.command(name='skip')
 async def skip(ctx):
-    voice_channel = discord.utils.get(bot.voice_clients, guild=ctx.guild)
-    voice_channel.stop()
+    # Get the voice client associated with the guild
+    voice_client = ctx.voice_client
+
+    if voice_client and voice_client.is_playing():
+        # Stop the currently playing song
+        voice_client.stop()
+    else:
+        await ctx.send("There is no song currently playing.")
+
+    # If there are more songs in the queue, play the next one
+    if queues.get(ctx.guild.id):
+        await play_next(ctx.guild.id, voice_client)
 
 @bot.command(name='stop')
 async def stop(ctx):
@@ -56,18 +72,13 @@ async def play_next(guild_id, voice_channel):
         url = queues[guild_id].popleft()
 
         ydl_opts = {
-            'format': 'bestaudio/best',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }],
+            'format': 'bestaudio',
             'outtmpl': 'downloads/%(title)s.%(ext)s',
         }
 
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            audio_url = info['url'] if info.get('formats') else None
+            audio_url = info.get('url')
 
             if audio_url:
                 voice_channel.play(discord.FFmpegPCMAudio(audio_url), after=lambda e: print('done', e))
