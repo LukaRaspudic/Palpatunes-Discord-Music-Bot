@@ -5,7 +5,7 @@ from collections import deque
 
 intents = discord.Intents.all()
 
-token = 'ADD YOUR TOKEN HERE'
+token = 'ADD YOUR TOKEN'
 prefix = '!'
 
 bot = commands.Bot(command_prefix=prefix, intents=intents)

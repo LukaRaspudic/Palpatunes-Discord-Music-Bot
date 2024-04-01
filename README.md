@@ -1,4 +1,4 @@
-# Palpatunes-Discord-Music-Bot
+# Palpatunes - Discord Music Bot
 Setup Prerequisites:
 
 Install Python: Make sure you have Python installed on your system. You can download it from python.org.
