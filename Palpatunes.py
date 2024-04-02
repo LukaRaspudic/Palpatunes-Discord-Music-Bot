@@ -5,7 +5,7 @@ from collections import deque
 
 intents = discord.Intents.all()
 
-token = 'ADD YOUR TOKEN'
+token = 'ADD YOUR TOKEN HERE'
 prefix = '!'
 
 bot = commands.Bot(command_prefix=prefix, intents=intents)
@@ -17,20 +17,30 @@ async def on_ready():
 
 @bot.command(name='play')
 async def play(ctx, url):
-    # Get the voice client associated with the guild
-    voice_client = ctx.voice_client
+    try:
+        # Get the voice client associated with the guild
+        voice_client = ctx.voice_client
 
-    # Check if the bot is not already connected to a voice channel
-    if not voice_client:
-        # Bot is not in a voice channel, attempt to join the author's voice channel
-        channel = ctx.author.voice.channel
-        print(f'Attempting to join channel: {channel}')
-        voice_client = await channel.connect()
+        # Check if the bot is not already connected to a voice channel
+        if not voice_client:
+            # Bot is not in a voice channel, attempt to join the author's voice channel
+            channel = ctx.author.voice.channel
+            print(f'Attempting to join channel: {channel}')
+            voice_client = await channel.connect()
 
-    if not queues.get(ctx.guild.id):
-        queues[ctx.guild.id] = deque()
+        if not queues.get(ctx.guild.id):
+            queues[ctx.guild.id] = deque()
 
-    queues[ctx.guild.id].append(url)
+        queues[ctx.guild.id].append(url)
+
+        # Check if the bot is not playing any song
+        if not voice_client.is_playing():
+            # If not, start playing the first song in the queue
+            await play_next(ctx.guild.id, voice_client)
+    except discord.errors.ClientException as e:
+        print(f"An error occurred while playing: {e}")
+        await voice_client.disconnect()
+        await channel.connect()
 
     # Check if the bot is not playing any song
     if not voice_client.is_playing():
@@ -58,6 +68,26 @@ async def stop(ctx):
     voice_channel.stop()
     queues[ctx.guild.id].clear()
     await ctx.send("Music stopped and playlist cleared.")
+
+@bot.command(name='pause')
+async def pause(ctx):
+    voice_client = ctx.voice_client
+
+    if voice_client and voice_client.is_playing():
+        voice_client.pause()
+        await ctx.send("Playback paused.")
+    else:
+        await ctx.send("No song is currently playing.")
+
+@bot.command(name='resume')
+async def resume(ctx):
+    voice_client = ctx.voice_client
+
+    if voice_client and voice_client.is_paused():
+        voice_client.resume()
+        await ctx.send("Playback resumed.")
+    else:
+        await ctx.send("No paused song to resume.")
 
 @bot.command(name='queue')
 async def queue(ctx):
