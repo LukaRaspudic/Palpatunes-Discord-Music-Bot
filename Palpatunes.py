@@ -16,31 +16,39 @@ async def on_ready():
     print(f'Logged in as {bot.user.name}')
 
 @bot.command(name='play')
-async def play(ctx, url):
-    try:
-        # Get the voice client associated with the guild
-        voice_client = ctx.voice_client
+async def play(ctx, *, query):
+    voice_client = ctx.voice_client
 
-        # Check if the bot is not already connected to a voice channel
-        if not voice_client:
-            # Bot is not in a voice channel, attempt to join the author's voice channel
-            channel = ctx.author.voice.channel
-            print(f'Attempting to join channel: {channel}')
-            voice_client = await channel.connect()
+    # Check if the user is in a voice channel
+    if not ctx.author.voice:
+        await ctx.send("You are not connected to a voice channel.")
+        return
 
-        if not queues.get(ctx.guild.id):
-            queues[ctx.guild.id] = deque()
+    # Check if the bot is not already connected to a voice channel
+    if not voice_client:
+        channel = ctx.author.voice.channel
+        print(f'Attempting to join channel: {channel}')
+        voice_client = await channel.connect()
 
-        queues[ctx.guild.id].append(url)
+    # Search for the song based on the provided query
+    ydl_opts = {
+        'format': 'bestaudio',
+        'outtmpl': 'downloads/%(title)s.%(ext)s',
+        'default_search': 'auto',
+    }
 
-        # Check if the bot is not playing any song
-        if not voice_client.is_playing():
-            # If not, start playing the first song in the queue
-            await play_next(ctx.guild.id, voice_client)
-    except discord.errors.ClientException as e:
-        print(f"An error occurred while playing: {e}")
-        await voice_client.disconnect()
-        await channel.connect()
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        search_results = ydl.extract_info(query, download=False)
+        if 'entries' in search_results:
+            # If multiple search results are returned, choose the first one
+            url = search_results['entries'][0]['webpage_url']
+        else:
+            url = search_results['webpage_url']
+
+    # Add the selected song to the queue
+    if not queues.get(ctx.guild.id):
+        queues[ctx.guild.id] = deque()
+    queues[ctx.guild.id].append(url)
 
     # Check if the bot is not playing any song
     if not voice_client.is_playing():
