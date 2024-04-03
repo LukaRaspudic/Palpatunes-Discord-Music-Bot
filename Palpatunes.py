@@ -5,7 +5,7 @@ from collections import deque
 
 intents = discord.Intents.all()
 
-token = 'ADD YOUR TOKEN HERE'
+token = 'ADD YOUR TOKEN'
 prefix = '!'
 
 bot = commands.Bot(command_prefix=prefix, intents=intents)
@@ -119,7 +119,8 @@ async def play_next(guild_id, voice_channel):
             audio_url = info.get('url')
 
             if audio_url:
-                voice_channel.play(discord.FFmpegPCMAudio(audio_url), after=lambda e: print('done', e))
+                # Use discord.PCMVolumeTransformer instead of discord.FFmpegPCMAudio
+                voice_channel.play(discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(audio_url)), after=lambda e: print('done', e))
                 await bot.get_channel(voice_channel.channel.id).send(f'Now playing: {info["title"]}')
 
                 # Check if there are more songs in the queue
