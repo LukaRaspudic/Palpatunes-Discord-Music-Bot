@@ -56,6 +56,9 @@ async def play(ctx, *, query):
     
     queues[ctx.guild.id].append(url)
     
+    # Download the audio file immediately
+    await download_audio(url, ydl_opts)
+
     # If no song is currently playing, start playback
     if not voice_client.is_playing():
         await play_next(ctx, voice_client)
@@ -92,7 +95,7 @@ async def queue(ctx):
 
 async def download_audio(url, ydl_opts):
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
+        info = ydl.extract_info(url, download=False)
         if 'entries' in info:
             title = info['entries'][0]['title']
         else:
@@ -123,14 +126,20 @@ async def play_next(ctx, voice_client):
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
+            if 'entries' in info:
+                title = info['entries'][0]['title']
+            else:
+                title = info['title']
+            
+            # Remove invalid characters from the title
+            sanitized_title = re.sub(r'[\\/*?:"<>|]', '', title)
+            filename = sanitized_title + '.' + info['ext']
+            
             audio_url = info.get('url')
 
             if audio_url:
-                # Download the audio file
-                file = await download_audio(url, ydl_opts)
-
                 # Play the downloaded file
-                file_path = f'downloads/{file}'
+                file_path = f'downloads/{filename}'
                 voice_client.play(discord.FFmpegPCMAudio(file_path), after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx, voice_client), bot.loop))
                 await ctx.send(f'Now playing: {info["title"]}')
                 
