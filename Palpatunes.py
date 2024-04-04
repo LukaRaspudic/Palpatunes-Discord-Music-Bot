@@ -4,12 +4,13 @@ import yt_dlp
 from collections import deque
 import asyncio
 import os
+import re
 
 intents = discord.Intents.all()
 
-token = 'add token'
+token = 'ADD YOUR TOKEN HERE'
 prefix = '!'
-MAX_RETRIES = 9999999999
+MAX_RETRIES = 10
 DELAY_SECONDS = 1
 
 bot = commands.Bot(command_prefix=prefix, intents=intents)
@@ -93,9 +94,21 @@ async def download_audio(url, ydl_opts):
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         if 'entries' in info:
-            filename = info['entries'][0]['title'] + '.' + info['entries'][0]['ext']
+            title = info['entries'][0]['title']
         else:
-            filename = info['title'] + '.' + info['ext']
+            title = info['title']
+        
+        # Remove invalid characters from the title
+        sanitized_title = re.sub(r'[\\/*?:"<>|]', '', title)
+        filename = sanitized_title + '.' + info['ext']
+        
+        # Update outtmpl to use the new filename
+        ydl_opts['outtmpl'] = f'downloads/{filename}'
+        
+        # Create a new YoutubeDL object with updated outtmpl
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl_new:
+            # Download the audio file with the modified outtmpl
+            ydl_new.download([url])
         
         return filename
     
@@ -114,10 +127,10 @@ async def play_next(ctx, voice_client):
 
             if audio_url:
                 # Download the audio file
-                await download_audio(url, ydl_opts)
+                file = await download_audio(url, ydl_opts)
 
                 # Play the downloaded file
-                file_path = f'downloads/{info["title"]}.{info["ext"]}'
+                file_path = f'downloads/{file}'
                 voice_client.play(discord.FFmpegPCMAudio(file_path), after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx, voice_client), bot.loop))
                 await ctx.send(f'Now playing: {info["title"]}')
                 
