@@ -4,18 +4,16 @@ import yt_dlp
 from collections import deque
 import asyncio
 import os
-import re
 
 intents = discord.Intents.all()
 
-token = 'your token'
+token = 'add token'
 prefix = '!'
-MAX_RETRIES = 60
+MAX_RETRIES = 9999999999
 DELAY_SECONDS = 1
 
 bot = commands.Bot(command_prefix=prefix, intents=intents)
 queues = {}
-last_ctx = None
 
 @bot.event
 async def on_ready():
@@ -54,26 +52,12 @@ async def play(ctx, *, query):
     # Add the selected song to the queue
     if not queues.get(ctx.guild.id):
         queues[ctx.guild.id] = deque()
+    
     queues[ctx.guild.id].append(url)
-
-    # Start downloading the next song in the queue
-    await download_next_song(ctx.guild.id)
-
-    # Check if the bot is not playing any song
+    
+    # If no song is currently playing, start playback
     if not voice_client.is_playing():
-        # If not, start playing the first song in the queue
-        await play_next(ctx.guild.id, voice_client)
-
-@bot.event
-async def on_voice_state_update(member, before, after):
-    if member == bot.user and after.channel is None and before.channel is not None:
-        # Bot has disconnected from a voice channel
-        guild_id = before.channel.guild.id
-        if queues.get(guild_id):
-            # If there are songs in the queue, play the next one
-            voice_channel = discord.utils.get(bot.voice_clients, guild=before.channel.guild)
-            if not voice_channel.is_playing():
-                await play_next(guild_id, voice_channel)
+        await play_next(ctx, voice_client)
 
 @bot.command(name='skip')
 async def skip(ctx):
@@ -105,9 +89,19 @@ async def queue(ctx):
     else:
         await ctx.send("The queue is empty.")
 
-async def play_next(guild_id, voice_channel, retries=MAX_RETRIES):
-    if queues.get(guild_id):
-        url = queues[guild_id].popleft()
+async def download_audio(url, ydl_opts):
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        if 'entries' in info:
+            filename = info['entries'][0]['title'] + '.' + info['entries'][0]['ext']
+        else:
+            filename = info['title'] + '.' + info['ext']
+        
+        return filename
+    
+async def play_next(ctx, voice_client):
+    if queues.get(ctx.guild.id):
+        url = queues[ctx.guild.id].popleft()
 
         ydl_opts = {
             'format': 'bestaudio',
@@ -120,55 +114,17 @@ async def play_next(guild_id, voice_channel, retries=MAX_RETRIES):
 
             if audio_url:
                 # Download the audio file
-                filename = await download_audio(url, ydl_opts)
+                await download_audio(url, ydl_opts)
+
+                # Play the downloaded file
+                file_path = f'downloads/{info["title"]}.{info["ext"]}'
+                voice_client.play(discord.FFmpegPCMAudio(file_path), after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx, voice_client), bot.loop))
+                await ctx.send(f'Now playing: {info["title"]}')
                 
-                if filename:
-                    
-                    try:
-                        # Play the downloaded file
-                        file_path = f'downloads/{filename}'
-                        voice_channel.play(discord.FFmpegPCMAudio(file_path))
-                        await bot.get_channel(voice_channel.channel.id).send(f'Now playing: {info["title"]}')
-                        
-                        # Delete the file after playback
-                        os.remove(file_path)
-                        
-                        # Start downloading the next song in the queue
-                        await download_next_song(guild_id)
-                    except Exception as e:
-                        if retries > 0:
-                            print(f"Error during playback: {e}. Retrying...")
-                            await asyncio.sleep(DELAY_SECONDS)
-                            await play_next(guild_id, voice_channel, retries=retries - 1)
-                        else:
-                            print("Max retries exceeded. Skipping song.")
-                            await play_next(guild_id, voice_channel)
+                # Delete the file after playback
+                os.remove(file_path)
             else:
-                await bot.get_channel(voice_channel.channel.id).send(f'Error: No audio stream found for {info["title"]}')
-
-async def download_audio(url, ydl_opts):
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        if 'entries' in info:
-            filename = info['entries'][0]['title'] + '.' + info['entries'][0]['ext']
-        else:
-            filename = info['title'] + '.' + info['ext']
-        
-        return filename
-
-async def download_next_song(guild_id):
-    if queues.get(guild_id):
-        next_url = queues[guild_id][0]
-
-        ydl_opts = {
-            'format': 'bestaudio',
-            'outtmpl': 'downloads/%(title)s.%(ext)s',
-        }
-
-        await download_audio(next_url, ydl_opts)
+                await ctx.send(f'Error: No audio stream found for {info["title"]}')
 
 # Run the bot
-async def start_bot():
-    await bot.start(token)
-
-asyncio.run(start_bot())
+bot.run(token)
