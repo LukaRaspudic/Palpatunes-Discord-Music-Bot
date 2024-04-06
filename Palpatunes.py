@@ -1,17 +1,17 @@
-import discord
+from discord import Intents
+from discord import utils
 from discord.ext import commands
-import yt_dlp
+from discord import FFmpegPCMAudio
+from yt_dlp import YoutubeDL
 from collections import deque
-import asyncio
-import os
-import re
+from asyncio import run_coroutine_threadsafe
+from os import remove
+from re import sub
 
-intents = discord.Intents.all()
+intents = Intents.all()
 
 token = 'ADD YOUR TOKEN HERE'
 prefix = '!'
-MAX_RETRIES = 10
-DELAY_SECONDS = 1
 
 bot = commands.Bot(command_prefix=prefix, intents=intents)
 queues = {}
@@ -42,7 +42,7 @@ async def play(ctx, *, query):
         'default_search': 'auto',
     }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    with YoutubeDL(ydl_opts) as ydl:
         search_results = ydl.extract_info(query, download=False)
         if 'entries' in search_results:
             # If multiple search results are returned, choose the first one
@@ -80,7 +80,7 @@ async def skip(ctx):
 
 @bot.command(name='stop')
 async def stop(ctx):
-    voice_channel = discord.utils.get(bot.voice_clients, guild=ctx.guild)
+    voice_channel = utils.get(bot.voice_clients, guild=ctx.guild)
     voice_channel.stop()
     queues[ctx.guild.id].clear()
     await ctx.send("Music stopped and playlist cleared.")
@@ -94,7 +94,7 @@ async def queue(ctx):
         await ctx.send("The queue is empty.")
 
 async def download_audio(url, ydl_opts):
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    with YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
         if 'entries' in info:
             title = info['entries'][0]['title']
@@ -102,14 +102,14 @@ async def download_audio(url, ydl_opts):
             title = info['title']
         
         # Remove invalid characters from the title
-        sanitized_title = re.sub(r'[\\/*?:"<>|]', '', title)
+        sanitized_title = sub(r'[\\/*?:"<>|]', '', title)
         filename = sanitized_title + '.' + info['ext']
         
         # Update outtmpl to use the new filename
         ydl_opts['outtmpl'] = f'downloads/{filename}'
         
         # Create a new YoutubeDL object with updated outtmpl
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl_new:
+        with YoutubeDL(ydl_opts) as ydl_new:
             # Download the audio file with the modified outtmpl
             ydl_new.download([url])
         
@@ -124,7 +124,7 @@ async def play_next(ctx, voice_client):
             'outtmpl': 'downloads/%(title)s.%(ext)s',
         }
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             if 'entries' in info:
                 title = info['entries'][0]['title']
@@ -132,7 +132,7 @@ async def play_next(ctx, voice_client):
                 title = info['title']
             
             # Remove invalid characters from the title
-            sanitized_title = re.sub(r'[\\/*?:"<>|]', '', title)
+            sanitized_title = sub(r'[\\/*?:"<>|]', '', title)
             filename = sanitized_title + '.' + info['ext']
             
             audio_url = info.get('url')
@@ -140,11 +140,11 @@ async def play_next(ctx, voice_client):
             if audio_url:
                 # Play the downloaded file
                 file_path = f'downloads/{filename}'
-                voice_client.play(discord.FFmpegPCMAudio(file_path), after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx, voice_client), bot.loop))
+                voice_client.play(FFmpegPCMAudio(file_path), after=lambda e: run_coroutine_threadsafe(play_next(ctx, voice_client), bot.loop))
                 await ctx.send(f'Now playing: {info["title"]}')
                 
                 # Delete the file after playback
-                os.remove(file_path)
+                remove(file_path)
             else:
                 await ctx.send(f'Error: No audio stream found for {info["title"]}')
 
