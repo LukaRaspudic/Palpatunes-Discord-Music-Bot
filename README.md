@@ -49,7 +49,7 @@ When using the bot command !play you can either add a youtube link to play the s
 
 or
 
-!play Rocked Man Elton John
+!play Rocket Man Elton John
 
 ## 🤝 Contributing
 
