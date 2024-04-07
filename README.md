@@ -69,7 +69,7 @@ or
 python Palpatunes.py
 ```
 
-### Enyoy the bot 😄
+### Enjoy the bot 😄
 
 ### Submit a pull request
 
