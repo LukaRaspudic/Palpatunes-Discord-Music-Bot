@@ -36,55 +36,40 @@ You should see the bot start up in the terminal. Once that is done just invite t
 
 ## 📖 Usage
 
-Available keys:
+Available commands:
 
-* `←: Left Arrow` - Move tetromino left
-* `→: Right Arrow` - Move tetromino right
-* `↑: Up Arrow` - Rotate tetromino
-* `↓: Down Arrow` - Increase rate of decent for tetromino
+* `!play` - Adds song to queue
+* `!skip` - Skips currently playing song
+* `!stop` - Stops the bot
+* `!queue` - Displays a list of all songs in queue
+
+When using the bot command !play you can either add a youtube link to play the selected song or you can type the name and artis of the song. See example below.
+
+!play https://www.youtube.com/watch?v=DtVBCG6ThDk&list=PLSUp7mU4ws_SRCaa0pThURd1yPMB8KP-K&index=17
+
+or
+
+!play Rocked Man Elton John
 
 ## 🤝 Contributing
 
 ### Clone the repo
 
 ```bash
-git clone https://github.com/Revan68/Tetris
-```
-
-### Update filepaths
-
-In score.py on line 10, you will have to change the filepath for the font to where you saved the images folder. See below examples.
-
-```python
-self.font = pygame.font.Font("ADD YOUR FILE PATH FOR THE FONT IN THE IMAGES FOLDER TITLED pixel-operator.ttf", 30)
-```
-The below example is what I use for the file path on my machine.
-
-```python
-self.font = pygame.font.Font("/workspace/github.com/LukaRaspudic/Tetris/images/pixel-operator.ttf", 30)
-```
-In preview.py on line 12, you will have to reapeat the steps above by updating the file path for images. See below examples.
-
-```python
-self.shape_surfaces = {shape: load(f'ADD YOUR FILE PATH HERE THAT LEADS TO IMAGES/images/{shape}.png').convert_alpha() for shape in tetrominos.keys()}
-```
-The below example is what I use for the file path on my machine.
-
-```python
-self.shape_surfaces = {shape: load(f'/workspace/github.com/LukaRaspudic/Tetris/images/{shape}.png').convert_alpha() for shape in tetrominos.keys()}
+git clone https://github.com/LukaRaspudic/Palpatunes-Discord-Music-Bot
 ```
 
 ### Run the project
 
 ```bash
-python3 main.py
+python3 Palpatunes.py
 ```
 or
 ```bash
-python main.py
+python Palpatunes.py
 ```
 
-### Enyoy the game 😄
+### Enyoy the bot 😄
 
 ### Submit a pull request
 
